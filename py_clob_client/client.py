@@ -44,6 +44,7 @@ from .endpoints import (
     GET_PRICES,
     GET_SPREAD,
     GET_SPREADS,
+    GET_PRICE_HISTORY,
 )
 from .clob_types import (
     ApiCreds,
@@ -62,6 +63,7 @@ from .clob_types import (
     PartialCreateOrderOptions,
     BookParams,
     MarketOrderArgs,
+    Interval
 )
 from .exceptions import PolyException
 from .http_helpers.helpers import (
@@ -717,6 +719,18 @@ class ClobClient:
         Get the market's trades events by condition id
         """
         return get("{}{}{}".format(self.host, GET_MARKET_TRADES_EVENTS, condition_id))
+
+    def get_price_history_between_timestamps(self, token_id : str, start_ts : int, end_ts: int, fidelity : int):
+        """
+        Get the price history for a market between two timestamps
+        """
+        return get("{}{}?market={}&startTs={}&endTs={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, start_ts, end_ts, fidelity))
+
+    def get_price_history_for_interval(self, token_id : str, interval : Interval, fidelity : int):
+        """
+        Get the price history for a market for a certain interval ending at the current time
+        """
+        return get("{}{}?market={}&interval={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, interval, fidelity))
 
     def calculate_market_price(self, token_id: str, side: str, amount: float) -> float:
         """

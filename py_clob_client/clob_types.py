@@ -173,6 +173,13 @@ class OrderType(enumerate):
     FOK = "FOK"
     GTD = "GTD"
 
+class Interval(enumerate):
+    MAX = "max"
+    ONE_MONTH = "1m"
+    ONE_WEEK = "1w"
+    ONE_DAY = "1d"
+    SIX_HOURS = "6h"
+    ONE_HOUR = "1h"
 
 @dataclass
 class OrderScoringParams:
