@@ -34,5 +34,8 @@ GET_SAMPLING_MARKETS = "/sampling-markets"
 GET_SIMPLIFIED_MARKETS = "/simplified-markets"
 GET_MARKETS = "/markets"
 GET_MARKET = "/markets/"
+GET_REWARDS_MARKET = "/rewards/markets/"
+GET_REWARDS_MARKETS = "/rewards/markets"
 GET_MARKET_TRADES_EVENTS = "/live-activity/events/"
 GET_PRICE_HISTORY = "/prices-history"
+

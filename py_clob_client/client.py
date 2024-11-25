@@ -45,6 +45,8 @@ from .endpoints import (
     GET_SPREAD,
     GET_SPREADS,
     GET_PRICE_HISTORY,
+    GET_REWARDS_MARKET,
+    GET_REWARDS_MARKETS,
 )
 from .clob_types import (
     ApiCreds,
@@ -63,7 +65,7 @@ from .clob_types import (
     PartialCreateOrderOptions,
     BookParams,
     MarketOrderArgs,
-    Interval
+    Interval,
 )
 from .exceptions import PolyException
 from .http_helpers.helpers import (
@@ -76,6 +78,15 @@ from .http_helpers.helpers import (
     add_balance_allowance_params_to_url,
     add_order_scoring_params_to_url,
 )
+from .clob_responses import (
+    ResponseStatus,
+    GetMarketResponse,
+    GetMarketsResponse,
+    GetPricesHistoryResponse,
+    GetOrderBookResponse,
+    GetOrderBooksResponse,
+    ErrorResponse,
+)
 
 from .constants import L0, L1, L1_AUTH_UNAVAILABLE, L2, L2_AUTH_UNAVAILABLE, END_CURSOR
 from .utilities import (
@@ -85,6 +96,17 @@ from .utilities import (
     is_tick_size_smaller,
     price_valid,
 )
+
+
+def error_handler(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception as e:
+            self.logger.error(f"Error in {func.__name__}: {e}")
+            return ErrorResponse(status_code=ResponseStatus.ERROR, error=(e))
+
+    return wrapper
 
 
 class ClobClient:
@@ -505,20 +527,20 @@ class ClobClient:
 
         return results
 
-    def get_order_book(self, token_id) -> OrderBookSummary:
+    def get_order_book(self, token_id) -> GetOrderBookResponse:
         """
         Fetches the orderbook for the token_id
         """
         raw_obs = get("{}{}?token_id={}".format(self.host, GET_ORDER_BOOK, token_id))
-        return parse_raw_orderbook_summary(raw_obs)
+        return GetOrderBookResponse.load_from_dict(raw_obs)
 
-    def get_order_books(self, params: list[BookParams]) -> list[OrderBookSummary]:
+    def get_order_books(self, params: list[BookParams]) -> GetOrderBooksResponse:
         """
         Fetches the orderbook for a set of token ids
         """
         body = [{"token_id": param.token_id} for param in params]
         raw_obs = post("{}{}".format(self.host, GET_ORDER_BOOKS), data=body)
-        return [parse_raw_orderbook_summary(r) for r in raw_obs]
+        return GetOrderBooksResponse.load_from_dict(raw_obs)
 
     def get_order_book_hash(self, orderbook: OrderBookSummary) -> str:
         """
@@ -694,11 +716,25 @@ class ClobClient:
             )
         )
 
-    def get_markets(self, next_cursor="MA=="):
+    @error_handler
+    def get_markets(self, next_cursor="MA==") -> GetMarketsResponse:
         """
         Get the current markets
         """
-        return get("{}{}?next_cursor={}".format(self.host, GET_MARKETS, next_cursor))
+        response = get(
+            "{}{}?next_cursor={}".format(self.host, GET_MARKETS, next_cursor)
+        )
+        return GetMarketsResponse.load_from_dict(response)
+
+    def get_active_markets(
+        self, closed: bool = False, active: bool = True, next_cursor="MA"
+    ):
+        """
+        Get the current markets
+        """
+        return get(
+            "{}{}?closed={}?active={}".format(self.host, GET_MARKETS, closed, active)
+        )
 
     def get_simplified_markets(self, next_cursor="MA=="):
         """
@@ -708,11 +744,35 @@ class ClobClient:
             "{}{}?next_cursor={}".format(self.host, GET_SIMPLIFIED_MARKETS, next_cursor)
         )
 
-    def get_market(self, condition_id):
+    @error_handler
+    def get_market(self, condition_id) -> GetMarketResponse:
         """
         Get a market by condition_id
         """
-        return get("{}{}{}".format(self.host, GET_MARKET, condition_id))
+        response = get("{}{}{}".format(self.host, GET_MARKET, condition_id))
+        return GetMarketResponse.load_from_dict(response)
+
+    def get_rewards_market(self, condition_id: str):
+        """
+        Get the rewards markets by condition id
+        """
+        return get("{}{}{}".format(self.host, GET_REWARDS_MARKET, condition_id))
+
+    def get_rewards_markets(self, next_cursor="MA"):
+        """
+        Get the rewards markets
+
+        """
+        # TODO: FIX
+        l2_headers = create_level_2_headers(
+            self.signer,
+            self.creds,
+            RequestArgs(method="GET", request_path=GET_REWARDS_MARKETS),
+        )
+        return get(
+            "{}{}?next_cursor={}".format(self.host, GET_REWARDS_MARKETS, next_cursor),
+            headers=l2_headers,
+        )
 
     def get_market_trades_events(self, condition_id):
         """
@@ -720,17 +780,31 @@ class ClobClient:
         """
         return get("{}{}{}".format(self.host, GET_MARKET_TRADES_EVENTS, condition_id))
 
-    def get_price_history_between_timestamps(self, token_id : str, start_ts : int, end_ts: int, fidelity : int):
+    def get_price_history_between_timestamps(
+        self, token_id: str, start_ts: int, end_ts: int, fidelity: int
+    ) -> GetPricesHistoryResponse:
         """
         Get the price history for a market between two timestamps
         """
-        return get("{}{}?market={}&startTs={}&endTs={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, start_ts, end_ts, fidelity))
+        data = get(
+            "{}{}?market={}&startTs={}&endTs={}&fidelity={}".format(
+                self.host, GET_PRICE_HISTORY, token_id, start_ts, end_ts, fidelity
+            )
+        )
+        return GetPricesHistoryResponse.load_from_dict(data)
 
-    def get_price_history_for_interval(self, token_id : str, interval : Interval, fidelity : int):
+    def get_price_history_for_interval(
+        self, token_id: str, interval: Interval, fidelity: int
+    ) -> GetPricesHistoryResponse:
         """
         Get the price history for a market for a certain interval ending at the current time
         """
-        return get("{}{}?market={}&interval={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, interval, fidelity))
+        data = get(
+            "{}{}?market={}&interval={}&fidelity={}".format(
+                self.host, GET_PRICE_HISTORY, token_id, interval, fidelity
+            )
+        )
+        return GetPricesHistoryResponse.load_from_dict(data)
 
     def calculate_market_price(self, token_id: str, side: str, amount: float) -> float:
         """
