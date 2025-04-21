@@ -166,6 +166,18 @@ class AssetType(enumerate):
     COLLATERAL = "COLLATERAL"
     CONDITIONAL = "CONDITIONAL"
 
+class Interval(enumerate):
+    MAX = "max"
+    ONE_MONTH = "1m"
+    ONE_WEEK = "1w"
+    ONE_DAY = "1d"
+    SIX_HOURS = "6h"
+    ONE_HOUR = "1h"
+
+@dataclass
+class TimeStamp:
+    start_ts: int
+    end_ts: int
 
 @dataclass
 class BalanceAllowanceParams:

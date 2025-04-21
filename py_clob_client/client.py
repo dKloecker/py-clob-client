@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from .order_builder.builder import OrderBuilder
 from .headers.headers import create_level_1_headers, create_level_2_headers
@@ -45,6 +45,7 @@ from .endpoints import (
     GET_PRICES,
     GET_SPREAD,
     GET_SPREADS,
+    GET_PRICE_HISTORY
 )
 from .clob_types import (
     ApiCreds,
@@ -63,6 +64,8 @@ from .clob_types import (
     PartialCreateOrderOptions,
     BookParams,
     MarketOrderArgs,
+    Interval,
+    TimeStamp
 )
 from .exceptions import PolyException
 from .http_helpers.helpers import (
@@ -745,3 +748,19 @@ class ClobClient:
             if book.bids is None:
                 raise Exception("no match")
             return self.builder.calculate_sell_market_price(book.bids, amount)
+
+    def get_price_history(self, token_id: str,
+                          fidelity: int,
+                          options: Union[TimeStamp|Interval])
+        """
+        Get the price history for a market between two timestamps
+        """
+        if isinstance(options, TimeStamp):
+            return get(
+            "{}{}?market={}&startTs={}&endTs={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, options.start_ts,
+                                                                    options.end_ts, fidelity))
+        elif isinstance(options, Interval):
+            return get(
+                "{}{}?market={}&interval={}&fidelity={}".format(self.host, GET_PRICE_HISTORY, token_id, options, fidelity))
+        else:
+            raise Exception("Unexpected Value")
